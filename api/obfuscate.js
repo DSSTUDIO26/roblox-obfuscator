@@ -11,37 +11,19 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Membersihkan komentar agar kode bersih
+        // Membersihkan komentar baris
         const cleanedScript = script.replace(/--.*$/gm, '').trim();
         
-        // Mengubah setiap karakter script menjadi kode angka ASCII (byte array)
-        const bytes = [...cleanedScript].map(char => char.charCodeAt(0));
+        // Menghasilkan kunci acak (1 - 255) untuk enkripsi XOR agar angka terlihat acak
+        const key = Math.floor(Math.random() * 254) + 1;
         
-        // Memecah deretan angka menjadi beberapa baris kecil (misal 20 angka per baris) agar tidak terkena limit Roblox
-        const chunkedBytes = [];
-        for (let i = 0; i < bytes.length; i += 20) {
-            chunkedBytes.push(bytes.slice(i, i + 20).join(','));
-        }
+        // Mengubah string menjadi byte array lalu di-XOR dengan key supaya angkanya tampak acak
+        const encodedBytes = [...cleanedScript].map(char => char.charCodeAt(0) ^ key);
         
-        const chunksString = chunkedBytes.map(chunk => `    ${chunk},`).join('\n');
-
-        // Membungkus angka-angka tersebut dengan interpreter aman yang mengembalikan 'return' untuk ModuleScript
-        const obfuscatedCode = 
-`-- [ Encrypted Byte Array Obfuscator ] --
-local t = {
-${chunksString}
-}
-local b = {}
-for i = 1, #t do
-    b[i] = string.char(t[i])
-end
-local code = table.concat(b)
-local fn, err = loadstring(code)
-if not fn then
-    warn("Obfuscation Error: " .. tostring(err))
-    return nil
-end
-return fn()`;
+        const arrStr = encodedBytes.join(',');
+        
+        // Membungkusnya menjadi 1 baris murni yang aman untuk ModuleScript (menggunakan return loadstring)
+        const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(d[i]~=${key}) end return loadstring(r)();`;
 
         if (process.env.DATABASE_URL) {
             const sql = neon(process.env.DATABASE_URL);
