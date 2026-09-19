@@ -23,20 +23,11 @@ export default async function handler(req, res) {
             encodedBytes.push(cleanedScript.charCodeAt(i) ^ key);
         }
         
+        // Digabung menjadi 1 baris penuh
         const arrStr = encodedBytes.join(',');
-        
-        // MEMBUATNYA MULTI-LINE (Dipecah setiap ~80 angka agar tidak melewati batas panjang baris Roblox)
-        const chunks = [];
-        const chunkSize = 80; // Jumlah elemen per baris
-        for (let i = 0; i < encodedBytes.length; i += chunkSize) {
-            chunks.push(encodedBytes.slice(i, i + chunkSize).join(','));
-        }
-        
-        // Menggabungkan array dengan enter (\n) di dalam kurung kurawal Lua
-        const multiLineArray = chunks.join(',\n');
 
-        // Membungkusnya menjadi beberapa baris yang aman dan bersih dari warning Studio
-        const obfuscatedCode = `local d={\n${multiLineArray}\n}\nlocal r=""\nfor i=1,#d do\n    r=r..string.char(d[i]~=${key})\nend\nreturn loadstring(r)();`;
+        // Menggunakan bit32.bxor dan format 1 baris
+        const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(bit32.bxor(d[i],${key})) end return loadstring(r)();`;
 
         if (process.env.DATABASE_URL) {
             try {
