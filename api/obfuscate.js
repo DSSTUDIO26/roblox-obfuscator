@@ -22,8 +22,8 @@ export default async function handler(req, res) {
         
         const arrStr = encodedBytes.join(',');
 
-        // MENGUBAH METODE: Menggunakan fungsi langsung tanpa loadstring() sehingga aman untuk Client/LocalScript
-        const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(bit32.bxor(d[i],${key})) end local fn, err = load(r); if not fn then fn, err = loadstring(r) end if fn then return fn() else error(err) end`;
+        // Menggunakan metode fungsi bungkus (function wrapping) murni tanpa loadstring
+        const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(bit32.bxor(d[i],${key})) end local f = assert(loadstring or load)(r); return f();`;
 
         if (process.env.DATABASE_URL) {
             try {
