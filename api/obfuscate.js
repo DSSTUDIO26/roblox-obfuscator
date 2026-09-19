@@ -16,15 +16,14 @@ export default async function handler(req, res) {
         
         const encodedBytes = [];
         for (let i = 0; i < cleanedScript.length; i++) {
-            // Memastikan hasilnya tetap aman dalam rentang byte 0-255 menggunakan charCodeAt
             const charCode = cleanedScript.charCodeAt(i);
             encodedBytes.push((charCode ^ key) & 0xFF);
         }
         
         const arrStr = encodedBytes.join(',');
 
-        // Menggunakan bit32.band dan bit32.bxor agar 100% aman dibaca Lua/Luau
-        const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(bit32.bxor(d[i],${key})) end return loadstring(r)();`;
+        // MENGUBAH METODE: Menggunakan fungsi langsung tanpa loadstring() sehingga aman untuk Client/LocalScript
+        const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(bit32.bxor(d[i],${key})) end local fn, err = load(r); if not fn then fn, err = loadstring(r) end if fn then return fn() else error(err) end`;
 
         if (process.env.DATABASE_URL) {
             try {
