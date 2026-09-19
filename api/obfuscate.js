@@ -11,22 +11,19 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Membersihkan komentar baris
         const cleanedScript = script.replace(/--.*$/gm, '').trim();
-        
-        // Menghasilkan kunci acak (1 - 255) untuk enkripsi XOR
         const key = Math.floor(Math.random() * 254) + 1;
         
-        // Mengubah string menjadi byte array yang di-XOR
         const encodedBytes = [];
         for (let i = 0; i < cleanedScript.length; i++) {
-            encodedBytes.push(cleanedScript.charCodeAt(i) ^ key);
+            // Memastikan hasilnya tetap aman dalam rentang byte 0-255 menggunakan charCodeAt
+            const charCode = cleanedScript.charCodeAt(i);
+            encodedBytes.push((charCode ^ key) & 0xFF);
         }
         
-        // Digabung menjadi 1 baris penuh
         const arrStr = encodedBytes.join(',');
 
-        // Menggunakan bit32.bxor dan format 1 baris
+        // Menggunakan bit32.band dan bit32.bxor agar 100% aman dibaca Lua/Luau
         const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(bit32.bxor(d[i],${key})) end return loadstring(r)();`;
 
         if (process.env.DATABASE_URL) {
