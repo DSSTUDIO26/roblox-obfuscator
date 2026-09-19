@@ -11,11 +11,21 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Membersihkan komentar dan menggabungkan seluruh baris menjadi 1 baris rata tanpa enter (\n)
-        const cleanedScript = script.replace(/--.*$/gm, '').replace(/\s+/g, ' ').trim();
+        const cleanedScript = script.replace(/--.*$/gm, '').trim();
         const encodedBytes = [...cleanedScript].map(char => '\\x' + char.charCodeAt(0).toString(16)).join('');
         
-        const obfuscatedCode = `local d="${encodedBytes}";loadstring(d:gsub('\\x(%x%x)',function(a)return string.char(tonumber(a,16))end))()`;
+        // Pecah string panjang menjadi beberapa potongan kecil per 150 karakter agar aman dari batasan line Roblox
+        const chunks = [];
+        for (let i = 0; i < encodedBytes.length; i += 150) {
+            chunks.push(`"${encodedBytes.slice(i, i + 150)}"`);
+        }
+
+        const obfuscatedCode = `local chunks = {${chunks.join(',')}}\n` +
+                               `local d = table.concat(chunks)\n` +
+                               `local success, res = pcall(function()\n` +
+                               `    return loadstring(d:gsub('\\x(%x%x)', function(a) return string.char(tonumber(a, 16)) end))()\n` +
+                               `end)\n` +
+                               `if not success then warn("Obfuscation execution error: " .. tostring(res)) end`;
 
         if (process.env.DATABASE_URL) {
             const sql = neon(process.env.DATABASE_URL);
