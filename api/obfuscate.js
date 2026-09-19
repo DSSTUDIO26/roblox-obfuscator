@@ -11,14 +11,15 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Membersihkan komentar agar format 1 baris tidak rusak
-        const cleanedScript = script.replace(/--.*$/gm, '').trim();
-        
-        // Mengubah karakter menjadi kode ASCII byte array agar menjadi 1 baris murni tanpa enter
-        const bytes = [...cleanedScript].map(char => char.charCodeAt(0));
-        
-        // Membungkusnya dalam format 1 baris yang mengembalikan nilai (cocok untuk ModuleScript)
-        const obfuscatedCode = `local b={${bytes.join(',')}} local s="" for _,v in ipairs(b) do s=s..string.char(v) end return loadstring(s)();`;
+        // Membersihkan komentar dan merapikan spasi berlebih tanpa merusak struktur kode asli
+        let minified = script
+            .replace(/--\[\[[\s\S]*?--\]\]/g, '') // Hapus komentar blok
+            .replace(/--.*$/gm, '')               // Hapus komentar baris
+            .replace(/\s+/g, ' ')                 // Ubah spasi ganda/enter menjadi spasi tunggal
+            .trim();
+
+        // Menambahkan header pelindung ringan yang aman untuk modul Roblox
+        const obfuscatedCode = `-- [ Protected by Custom Backend Minifier ] --\n` + minified;
 
         if (process.env.DATABASE_URL) {
             const sql = neon(process.env.DATABASE_URL);
