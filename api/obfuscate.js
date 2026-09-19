@@ -11,24 +11,12 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Obfuscasi ringan yang aman untuk Luau Roblox (menghindari error baris terlalu panjang)
-        // Melakukan minifikasi dasar dan enkripsi string bertahap agar tidak merusak fungsi game.
-        const cleanedScript = script.replace(/--.*$/gm, ''); // Hapus komentar untuk meringankan baris
+        // Membersihkan komentar dan menggabungkan seluruh baris menjadi 1 baris rata tanpa enter (\n)
+        const cleanedScript = script.replace(/--.*$/gm, '').replace(/\s+/g, ' ').trim();
         const encodedBytes = [...cleanedScript].map(char => '\\x' + char.charCodeAt(0).toString(16)).join('');
         
-        const obfuscatedCode = `-- [ Protected by Dragon Stell Obfuscator ] --\n` +
-                               `local encoded_data = "${encodedBytes}"\n` +
-                               `local function decode(data)\n` +
-                               `    return (data:gsub('\\x(%x%x)', function(digits)\n` +
-                               `        return string.char(tonumber(digits, 16))\n` +
-                               `    end))\n` +
-                               `end\n` +
-                               `local success, result = pcall(function()\n` +
-                               `    return loadstring(decode(encoded_data))()\n` +
-                               `end)\n` +
-                               `if not success then warn("Obfuscation error: " .. tostring(result)) end`;
+        const obfuscatedCode = `local d="${encodedBytes}";loadstring(d:gsub('\\x(%x%x)',function(a)return string.char(tonumber(a,16))end))()`;
 
-        // Simpan log ke database Neon (Opsional jika DATABASE_URL diset)
         if (process.env.DATABASE_URL) {
             const sql = neon(process.env.DATABASE_URL);
             await sql`CREATE TABLE IF NOT EXISTS obfuscate_logs (id SERIAL PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`;
