@@ -1,0 +1,13 @@
+{
+  "name": "roblox-obfuscator",
+  "version": "1.0.0",
+  "description": "Roblox Script Obfuscator Web Tool",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "@neondatabase/serverless": "^0.9.0"
+  }
+}
