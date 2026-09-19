@@ -11,15 +11,37 @@ export default async function handler(req, res) {
     }
 
     try {
-        // Membersihkan komentar dan merapikan spasi berlebih tanpa merusak struktur kode asli
-        let minified = script
-            .replace(/--\[\[[\s\S]*?--\]\]/g, '') // Hapus komentar blok
-            .replace(/--.*$/gm, '')               // Hapus komentar baris
-            .replace(/\s+/g, ' ')                 // Ubah spasi ganda/enter menjadi spasi tunggal
-            .trim();
+        // Membersihkan komentar agar kode bersih
+        const cleanedScript = script.replace(/--.*$/gm, '').trim();
+        
+        // Mengubah setiap karakter script menjadi kode angka ASCII (byte array)
+        const bytes = [...cleanedScript].map(char => char.charCodeAt(0));
+        
+        // Memecah deretan angka menjadi beberapa baris kecil (misal 20 angka per baris) agar tidak terkena limit Roblox
+        const chunkedBytes = [];
+        for (let i = 0; i < bytes.length; i += 20) {
+            chunkedBytes.push(bytes.slice(i, i + 20).join(','));
+        }
+        
+        const chunksString = chunkedBytes.map(chunk => `    ${chunk},`).join('\n');
 
-        // Menambahkan header pelindung ringan yang aman untuk modul Roblox
-        const obfuscatedCode = `-- [ Protected by Custom Backend Minifier ] --\n` + minified;
+        // Membungkus angka-angka tersebut dengan interpreter aman yang mengembalikan 'return' untuk ModuleScript
+        const obfuscatedCode = 
+`-- [ Encrypted Byte Array Obfuscator ] --
+local t = {
+${chunksString}
+}
+local b = {}
+for i = 1, #t do
+    b[i] = string.char(t[i])
+end
+local code = table.concat(b)
+local fn, err = loadstring(code)
+if not fn then
+    warn("Obfuscation Error: " .. tostring(err))
+    return nil
+end
+return fn()`;
 
         if (process.env.DATABASE_URL) {
             const sql = neon(process.env.DATABASE_URL);
