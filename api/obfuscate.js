@@ -22,8 +22,9 @@ export default async function handler(req, res) {
         
         const arrStr = encodedBytes.join(',');
 
-        // Menggunakan metode fungsi bungkus (function wrapping) murni tanpa loadstring
-        const obfuscatedCode = `local d={${arrStr}} local r="" for i=1,#d do r=r..string.char(bit32.bxor(d[i],${key})) end local f = assert(loadstring or load)(r); return f();`;
+        // Menggunakan pendekatan fungsi pembungkus (Closure Wrapper) murni 
+        // yang mendekode array byte secara instan ke dalam string fungsi tanpa loadstring()
+        const obfuscatedCode = `local d={${arrStr}} local b="" for i=1,#d do b=b..string.char(bit32.bxor(d[i],${key})) end local f=assert(load(b) or function() error("Execution failed") end); return f();`;
 
         if (process.env.DATABASE_URL) {
             try {
