@@ -1,42 +1,73 @@
-import { neon } from '@neondatabase/serverless';
-
-export default async function handler(req, res) {
-    if (req.method !== 'POST') {
-        return res.status(405).json({ success: false, message: 'Method not allowed' });
-    }
-
-    const { script } = req.body;
-    if (!script) {
-        return res.status(400).json({ success: false, message: 'Script tidak boleh kosong!' });
-    }
-
-    try {
-        // Obfuscasi ringan yang aman untuk Luau Roblox (menghindari error baris terlalu panjang)
-        // Melakukan minifikasi dasar dan enkripsi string bertahap agar tidak merusak fungsi game.
-        const cleanedScript = script.replace(/--.*$/gm, ''); // Hapus komentar untuk meringankan baris
-        const encodedBytes = [...cleanedScript].map(char => '\\x' + char.charCodeAt(0).toString(16)).join('');
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roblox Script Obfuscator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#07070a] text-gray-100 min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-3xl bg-[#0d0d12] border border-white/10 rounded-2xl p-6 shadow-2xl space-y-4">
+        <div>
+            <h1 class="text-xl font-bold text-purple-400">Roblox Script Obfuscator</h1>
+            <p class="text-xs text-gray-400">Amankan script Lua / Luau Roblox Anda agar terhindar dari pembacaan kasat mata.</p>
+        </div>
         
-        const obfuscatedCode = `-- [ Protected by Dragon Stell Obfuscator ] --\n` +
-                               `local encoded_data = "${encodedBytes}"\n` +
-                               `local function decode(data)\n` +
-                               `    return (data:gsub('\\x(%x%x)', function(digits)\n` +
-                               `        return string.char(tonumber(digits, 16))\n` +
-                               `    end))\n` +
-                               `end\n` +
-                               `local success, result = pcall(function()\n` +
-                               `    return loadstring(decode(encoded_data))()\n` +
-                               `end)\n` +
-                               `if not success then warn("Obfuscation error: " .. tostring(result)) end`;
+        <div class="space-y-1">
+            <label class="text-xs font-semibold text-gray-400 uppercase">Script Mentah (Source Code):</label>
+            <textarea id="sourceScript" rows="7" placeholder="print('Halo dunia!')" 
+                class="w-full bg-[#070710] border border-white/10 rounded-xl p-3 text-xs text-white font-mono focus:outline-none focus:border-purple-500"></textarea>
+        </div>
+        
+        <button onclick="handleObfuscate()" id="obfuscateBtn" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold py-3 rounded-xl text-xs transition shadow-lg shadow-purple-900/30">
+            Obfuscate Script Sekarang
+        </button>
 
-        // Simpan log ke database Neon (Opsional jika DATABASE_URL diset)
-        if (process.env.DATABASE_URL) {
-            const sql = neon(process.env.DATABASE_URL);
-            await sql`CREATE TABLE IF NOT EXISTS obfuscate_logs (id SERIAL PRIMARY KEY, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);`;
-            await sql`INSERT INTO obfuscate_logs DEFAULT VALUES;`;
+        <div class="space-y-1">
+            <div class="flex justify-between items-center">
+                <label class="text-xs font-semibold text-gray-400 uppercase">Hasil Obfuscate:</label>
+                <button onclick="copyResult()" class="text-xs text-purple-400 hover:text-purple-300">Salin Hasil</button>
+            </div>
+            <textarea id="resultScript" rows="7" readonly placeholder="Hasil kode aman akan muncul di sini..." 
+                class="w-full bg-[#070710] border border-white/10 rounded-xl p-3 text-xs text-purple-300 font-mono focus:outline-none"></textarea>
+        </div>
+    </div>
+
+    <script>
+        async function handleObfuscate() {
+            const script = document.getElementById('sourceScript').value;
+            const btn = document.getElementById('obfuscateBtn');
+            if (!script) return alert('Masukkan script terlebih dahulu!');
+
+            btn.innerText = 'Memproses...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/obfuscate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ script })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('resultScript').value = data.result;
+                } else {
+                    alert('Gagal: ' + data.message);
+                }
+            } catch (err) {
+                alert('Terjadi kesalahan jaringan!');
+            } finally {
+                btn.innerText = 'Obfuscate Script Sekarang';
+                btn.disabled = false;
+            }
         }
 
-        return res.status(200).json({ success: true, result: obfuscatedCode });
-    } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
-    }
-}
+        function copyResult() {
+            const resultText = document.getElementById('resultScript');
+            resultText.select();
+            document.execCommand('copy');
+            alert('Hasil obfuscate berhasil disalin!');
+        }
+    </script>
+</body>
+</html>
