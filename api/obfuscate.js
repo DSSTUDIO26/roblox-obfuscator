@@ -12,17 +12,28 @@ export default async function handler(req, res) {
 
     try {
         const cleanedScript = script.replace(/--.*$/gm, '').trim();
-        const encodedBytes = [...cleanedScript].map(char => '\\x' + char.charCodeAt(0).toString(16)).join('');
         
-        const chunks = [];
-        for (let i = 0; i < encodedBytes.length; i += 150) {
-            chunks.push(`"${encodedBytes.slice(i, i + 150)}"`);
-        }
-
-        // Tambahkan 'return' di depan loadstring agar ModuleScript tetap berfungsi normal saat di-require
-        const obfuscatedCode = `local chunks = {${chunks.join(',')}}\n` +
-                               `local d = table.concat(chunks)\n` +
-                               `local fn, err = loadstring(d:gsub('\\x(%x%x)', function(a) return string.char(tonumber(a, 16)) end))\n` +
+        // Menggunakan Base64 encoding agar struktur kode, fungsi, dan karakter khusus tetap aman
+        const encodedData = Buffer.from(cleanedScript, 'utf-8').toString('base64');
+        
+        // Fungsi decoder Base64 murni berbasis Lua untuk Luau Roblox
+        const obfuscatedCode = `local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'\n` +
+                               `local function decode(data)\n` +
+                               `    data = string.gsub(data, '[^'..b..'=]', '')\n` +
+                               `    return (data:gsub('.', function(x)\n` +
+                               `        if (x == '=') then return '' end\n` +
+                               `        local r,f='',(b:find(x)-1)\n` +
+                               `        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end\n` +
+                               `        return r\n` +
+                               `    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)\n` +
+                               `        if (#x ~= 8) then return '' end\n` +
+                               `        local c=0\n` +
+                               `        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end\n` +
+                               `        return string.char(c)\n` +
+                               `    end))\n` +
+                               `end\n` +
+                               `local encoded = "${encodedData}"\n` +
+                               `local fn, err = loadstring(decode(encoded))\n` +
                                `if not fn then warn("Loadstring error: " .. tostring(err)) return nil end\n` +
                                `return fn()`;
 
